@@ -9,7 +9,6 @@ import 'package:uuid/uuid.dart';
 import 'package:qa_flutter/services/format_time_elapsed.dart';
 
 
-
 class Participant extends StatefulWidget {
   final String code;
   
@@ -27,18 +26,55 @@ class Participant extends StatefulWidget {
 class _ParticipantState extends State<Participant> {
   final TextEditingController _questionController = TextEditingController();
 
+
   DocumentSnapshot? currentSnapshot;
 
   @override
   Widget build(BuildContext context) {
-    final FirebaseAuth _auth = FirebaseAuth.instance;
+    final FirebaseAuth auth = FirebaseAuth.instance;
     final FirebaseFirestore db = FirebaseFirestore.instance;
-    final User? user = _auth.currentUser;
+    final User? user = auth.currentUser;
     final code = widget.code;
     
     Query qaQuery = db
       .collection('qas')
       .where(FieldPath.documentId, isEqualTo: code);
+
+    // void updateQuestionVotes(int questionIndex, String qaId, List<QuestionWithIndex>? typedQuestions, Qa qa, User user, FirebaseFirestore db) async {
+    //   if (qa.id != null && questionIndex >= 0 && typedQuestions != null && questionIndex < typedQuestions.length) {
+    //     final questionWithIndex = typedQuestions[questionIndex];
+    //     final question = questionWithIndex.question;
+
+    //     final userId = user.uid;
+
+    //     if (question != null) {
+    //       if (question.userVotes != null &&
+    //           question.userVotes.containsKey(userId) &&
+    //           question.userVotes[userId] == true) {
+    //         print('O usuário já votou nesta pergunta.');
+    //         return;
+    //       }
+
+    //       setState(() {
+    //         question.questionVotes = (question.questionVotes ?? 0) + 1;
+    //         question.userVotes ??= {};
+    //         question.userVotes[userId] = true;
+    //       });
+    //     }
+
+    //     try {
+    //       DocumentReference docRef = db.collection('qas').doc(qa.id);
+
+    //       await docRef.update({
+    //         'questions': typedQuestions.map((questionWithIndex) => questionWithIndex.question.toJson()).toList(),
+    //       });
+
+    //       print('Voto registrado com sucesso.');
+    //     } catch (error) {
+    //       print('Erro ao atualizar votos da pergunta: $error');
+    //     }
+    //   }
+    // }
 
     return Scaffold(
       appBar: Header(showLogoutButton: true, context: context),
@@ -63,27 +99,14 @@ class _ParticipantState extends State<Participant> {
           final data = snapshot.data!.docs[0];
 
           String? id = code;
-          String? userId = data!['userId'] as String?;
+          String? userId = data['userId'] as String?;
           Timestamp? qaDatetime = data['qaDatetime'] as Timestamp?;
           List<dynamic>? questions = data['questions'] as List<dynamic>?;
 
-          // List<Question>? typedQuestions;
-          // if (questions != null) {
-          //   typedQuestions = questions.map((dynamic item) {
-          //     return Question.fromJson(item as Map<String, dynamic>);
-          //   }).toList();
+          if (data == null || userId == null || qaDatetime == null || questions == null) {
+            return const Center(child: Text('Dados inválidos'));
+          }
 
-          //   typedQuestions.sort((a, b) {
-          //     // Primeiro, comparar por questionVotes em ordem decrescente
-          //     int votesComparison = b.questionVotes!.compareTo(a.questionVotes!);
-          //     if (votesComparison != 0) {
-          //       return votesComparison;
-          //     }
-
-          //     // Em seguida, comparar por questionDatetime em ordem decrescente
-          //     return b.questionDatetime!.compareTo(a.questionDatetime!);
-          //   });
-          // }
           List<QuestionWithIndex>? typedQuestions;
 
           if (questions != null) {
@@ -94,28 +117,34 @@ class _ParticipantState extends State<Participant> {
             }).toList();
 
             typedQuestions.sort((a, b) {
-              // First, compare by questionDatetime in descending order
-              int datetimeComparison = b.question.questionDatetime!
-                  .compareTo(a.question.questionDatetime!);
-              if (datetimeComparison != 0) {
-                return datetimeComparison;
+              if (a.question.questionDatetime != null && b.question.questionDatetime != null) {
+                int datetimeComparison = b.question.questionDatetime!
+                    .compareTo(a.question.questionDatetime!);
+                if (datetimeComparison != 0) {
+                  return datetimeComparison;
+                }
               }
 
-              // Next, compare by questionVotes in descending order
-              return b.question.questionVotes!.compareTo(a.question.questionVotes!);
+              if (a.question.questionVotes != null && b.question.questionVotes != null) {
+                return b.question.questionVotes!.compareTo(a.question.questionVotes!);
+              }
+
+              // Se as propriedades questionDatetime e questionVotes não existirem
+              // ou forem nulas, retorna 0 para manter a ordem original.
+              return 0;
             });
+
           }
 
 
           if (currentSnapshot != null && currentSnapshot != data) {
             currentSnapshot = data;
           }
-         
 
           // Qa qa = Qa(id, userId, qaDatetime, typedQuestions);
           Qa qa = Qa(id, userId, qaDatetime, typedQuestions!.cast<Question>());
 
-          String qaFormatedDateTime = formatTimeElapsed(qaDatetime!);
+          // String qaFormatedDateTime = formatTimeElapsed(qaDatetime!);
 
           String questionsCount = questions != null ? questions.length.toString() : '0';
 
@@ -217,6 +246,7 @@ class _ParticipantState extends State<Participant> {
                                 questionVotes: 0,
                                 questionDatetime: Timestamp.now(),
                                 answer: '', 
+                                // userVotes: {},
                               )),
                               _questionController.clear(),
                             },
@@ -276,7 +306,9 @@ class _ParticipantState extends State<Participant> {
                         itemCount: typedQuestions != null ? typedQuestions.length : 0,
 
                         itemBuilder: (context, index) {
-                          Question question = typedQuestions![index] as Question;
+                          QuestionWithIndex questionWithIndex = typedQuestions![index];
+                          Question question = questionWithIndex.question;
+
                           // print(question.questionId);
                           // print(question.question);
                           // print(question.questionVotes);
@@ -294,13 +326,7 @@ class _ParticipantState extends State<Participant> {
 
                           String? formatedDateTime = formatTimeElapsed(questionDatetime!);
 
-                          updateQuestionVotes(int questionIndex) async {
-                            if (qa.id != null && questionIndex >= 0 && questionIndex < typedQuestions!.length) {
-                              final questionWithIndex = typedQuestions[questionIndex];
-                              final question = questionWithIndex.question;
-                            }
-                          }
-
+                          
                           return Card(
                             margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
                             child: ListTile(
@@ -375,7 +401,7 @@ class _ParticipantState extends State<Participant> {
                                       Icons.thumb_up,
                                       color: questionVotes >= 1 ? MyTheme.accent : Colors.grey,
                                     ),
-                                    onPressed: () => updateQuestionVotes(index),
+                                    onPressed: () {},
                                   ),
                                 ],
                               ),

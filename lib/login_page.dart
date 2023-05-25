@@ -76,8 +76,6 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               const SizedBox(height: 72),
-              const Text('a@a.com 123456'),
-              const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(

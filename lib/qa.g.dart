@@ -29,7 +29,7 @@ Question _$QuestionFromJson(Map<String, dynamic> json) => Question(
       questionOwnerEmail: json['questionOwnerEmail'] as String?,
       questionVotes: json['questionVotes'] as int?,
       questionDatetime: Question._timestampFromJson(json['questionDatetime']),
-      answer: json['answer'] as String?, 
+      answer: json['answer'] as String?,
     );
 
 Map<String, dynamic> _$QuestionToJson(Question instance) => <String, dynamic>{

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart';
 
 part 'qa.g.dart';
 
@@ -31,7 +30,8 @@ class Qa {
   static dynamic _timestampToJson(Timestamp? timestamp) {
     if (timestamp != null) {
       return {
-        timestamp
+        '_seconds': timestamp.seconds,
+        '_nanoseconds': timestamp.nanoseconds,
       };
     }
     return null;
@@ -46,11 +46,11 @@ class Question {
   String? questionOwnerEmail;
   int? questionVotes;
   
-
   @JsonKey(fromJson: _timestampFromJson, toJson: _timestampToJson)
   Timestamp? questionDatetime;
 
   String? answer;
+  // Map<String, bool> userVotes;
 
   Question({
     required this.questionId,
@@ -60,6 +60,7 @@ class Question {
     required this.questionVotes,
     required this.questionDatetime,
     required this.answer,
+    // Map<String, bool>? userVotes,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) => _$QuestionFromJson(json);
@@ -71,13 +72,14 @@ class Question {
     } else if (json is Map<String, dynamic>) {
       return Timestamp(json['_seconds'], json['_nanoseconds']);
     } 
-    return json[0];
+    return null;
   }
 
   static dynamic _timestampToJson(Timestamp? timestamp) {
     if (timestamp != null) {
       return {
-        timestamp
+        '_seconds': timestamp.seconds,
+        '_nanoseconds': timestamp.nanoseconds,
       };
     }
     return null;
